@@ -25,6 +25,7 @@ public class ActionNode : Node
 
     public override NodeState Evaluate(ActionContext actionContext, ConditionContext conditionContext)
     {
+        
         return action(actionContext);
     }
 }
@@ -41,6 +42,17 @@ public class ConditionNode : Node
 
     public override NodeState Evaluate(ActionContext actionContext, ConditionContext conditionContext)
     {
+            if (conditionContext == null)
+    {
+        Debug.LogError("ConditionContext is null!");
+        return NodeState.FAILURE;
+    }
+
+    if (condition == null)
+    {
+        Debug.LogError("Condition function is null!");
+        return NodeState.FAILURE;
+    }
         bool conditionResult = condition(conditionContext); // Use the condition function with the provided context
         return conditionResult ? NodeState.SUCCESS : NodeState.FAILURE; // Return success or failure based on the condition result
     }
