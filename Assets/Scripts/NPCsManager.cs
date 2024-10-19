@@ -87,6 +87,7 @@ public class NPSsManager : MonoBehaviour
 
     void ObjectPolling()
     {
+        //abylai gau
         for (int i = npcList.Count - 1; i >= 0; i--)
         {
             GameObject npc = npcList[i];
