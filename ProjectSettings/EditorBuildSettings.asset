@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Damir demo.unity
+    guid: 797757ab0ae505d46bbce147f6b4bfeb
   m_configObjects: {}

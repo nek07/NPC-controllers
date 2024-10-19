@@ -390,7 +390,6 @@ GameObject:
   m_Component:
   - component: {fileID: 320065676375939097}
   - component: {fileID: 145280037307953280}
-  - component: {fileID: 1486135981268937815}
   m_Layer: 0
   m_Name: casual_Female_K
   m_TagString: Untagged
@@ -495,21 +494,6 @@ SkinnedMeshRenderer:
     m_Center: {x: 0.094721615, y: -0.0028750896, z: 0.0000006556511}
     m_Extent: {x: 0.8517217, y: 0.21320954, z: 0.7793898}
   m_DirtyAABB: 0
---- !u!114 &1486135981268937815
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2718710161225332483}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e39bb42a526a1f9448eaa08e19a93490, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anyObject: {fileID: 0}
-  destination: {fileID: 0}
-  NPC: {fileID: 2464993875023743349}
 --- !u!1 &3006785305354698822
 GameObject:
   m_ObjectHideFlags: 0
@@ -1291,8 +1275,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e39bb42a526a1f9448eaa08e19a93490, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  destinations:
+  - {fileID: 7295678899601464664}
   anyObject: {fileID: 0}
-  destination: {fileID: 0}
   NPC: {fileID: 2464993875023743349}
 --- !u!195 &2988087095766633944
 NavMeshAgent:

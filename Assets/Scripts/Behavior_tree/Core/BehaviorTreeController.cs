@@ -9,11 +9,14 @@ public class BehaviorTreeController : MonoBehaviour
     private Animator animator;
     private IsPlayerNearby isPlayerNearbyCheck;
     private IsCarNearby isCarNearbyCheck;
+    private IsDogNearby isDogNearbyCheck; // Предполагается, что это тоже часть вашего кода
+    private Renderer npcRenderer; // Новый компонент Renderer для отключения/включения моделей
 
     // Убедитесь, что массив точек назначения установлен в инспекторе
     public Transform[] destinations; // Массив точек назначения
     public Transform anyObject; // Убедитесь, что это установлено в инспекторе
     public Transform NPC; // Убедитесь, что это установлено в инспекторе
+    public Camera playerCamera; // Камера игрока
 
     private List<Transform> shuffledDestinations = new List<Transform>(); // Перемешанные точки назначения
     private int currentDestinationIndex = 0; // Индекс текущей точки назначения
@@ -36,53 +39,38 @@ public class BehaviorTreeController : MonoBehaviour
             return;
         }
 
+        // Инициализация Renderer для отключения моделей
+        npcRenderer = GetComponentInChildren<Renderer>();
+        if (npcRenderer == null)
+        {
+            Debug.LogError("Renderer not found on the NPC!");
+            return;
+        }
+
         // Инициализация проверок
         isPlayerNearbyCheck = gameObject.AddComponent<IsPlayerNearby>();
-        Debug.Log("IsPlayerNearby component added.");
-
         isCarNearbyCheck = gameObject.AddComponent<IsCarNearby>();
-        Debug.Log("IsCarNearby component added.");
 
         // Перемешиваем массив точек назначения
         ShuffleDestinations();
 
         // Узлы действия
         ActionNode moveToDestination = new ActionNode(context => MoveToDestination(context));
-        Debug.Log("MoveToDestination action node created.");
-
         ActionNode greetPlayer = new ActionNode(context => GreetPlayer(context));
-        Debug.Log("GreetPlayer action node created.");
-
         ActionNode avoidCar = new ActionNode(context => AvoidCar(context));
-        Debug.Log("AvoidCar action node created.");
 
         // Узлы условий
         ConditionNode isPlayerNearby = new ConditionNode(context => isPlayerNearbyCheck.Check());
-        Debug.Log("IsPlayerNearby condition node created.");
-
         ConditionNode isCarNearby = new ConditionNode(context => isCarNearbyCheck.Check());
-        Debug.Log("IsCarNearby condition node created.");
 
         // Секвенции и селекторы
         SequenceNode greetSequence = new SequenceNode(new List<Node> { isPlayerNearby, greetPlayer });
-        Debug.Log("Greet sequence created.");
-
         SequenceNode carCrashSequence = new SequenceNode(new List<Node> { isCarNearby, avoidCar });
-        Debug.Log("Car crash sequence created.");
 
         SelectorNode mainSelector = new SelectorNode(new List<Node> { carCrashSequence, greetSequence, moveToDestination });
-        Debug.Log("Main selector created.");
 
         // Основное дерево
         root = mainSelector;
-        if (root == null)
-        {
-            Debug.LogError("Behavior tree root is null! Check node initialization.");
-        }
-        else
-        {
-            Debug.Log("Behavior tree initialized successfully.");
-        }
     }
 
     private void ShuffleDestinations()
@@ -110,22 +98,22 @@ public class BehaviorTreeController : MonoBehaviour
         var actionContext = new ActionContext(agent, animator, anyObject, destinations);
         var conditionContext = new ConditionContext(anyObject, NPC);
 
+        // Проверка видимости
+        CheckVisibility();
+
         // Вызываем Evaluate для корневого узла
         NodeState state = root.Evaluate(actionContext, conditionContext);
+    }
 
-        // Обработка состояния, если необходимо
-        switch (state)
-        {
-            case NodeState.RUNNING:
-                Debug.Log("Behavior tree is running.");
-                break;
-            case NodeState.SUCCESS:
-                Debug.Log("Behavior tree completed successfully.");
-                break;
-            case NodeState.FAILURE:
-                Debug.Log("Behavior tree failed.");
-                break;
-        }
+    private void CheckVisibility()
+    {
+        if (npcRenderer == null || playerCamera == null) return;
+
+        // Проверка, находится ли NPC в поле зрения камеры
+        Vector3 viewPos = playerCamera.WorldToViewportPoint(transform.position);
+        bool isVisible = (viewPos.x > 0 && viewPos.x < 1 && viewPos.y > 0 && viewPos.y < 1 && viewPos.z > 0);
+
+        npcRenderer.enabled = isVisible; // Отключить/включить рендерер
     }
 
     // Действие: движение к цели с использованием NavMeshAgent
@@ -133,7 +121,6 @@ public class BehaviorTreeController : MonoBehaviour
     {
         if (currentDestinationIndex >= shuffledDestinations.Count)
         {
-            // Если все цели достигнуты, просто вернём SUCCESS
             return NodeState.SUCCESS;
         }
 
@@ -150,22 +137,21 @@ public class BehaviorTreeController : MonoBehaviour
         {
             agent.SetDestination(destination.position);
             context.Animator.SetBool("IsWalking", true);
+            context.Animator.SetBool("IsDancing", false);
             return NodeState.RUNNING;
         }
 
-        context.Animator.SetBool("IsWalking", false); // Останавливаем анимацию
-        currentDestinationIndex++; // Переходим к следующей цели
-        return NodeState.SUCCESS; // Достигли цели
+        context.Animator.SetBool("IsWalking", false);
+        currentDestinationIndex++;
+        return NodeState.SUCCESS;
     }
 
-    // Действие: приветствие игрока
     private NodeState GreetPlayer(ActionContext context)
     {
         isPlayerNearbyCheck.React();
         agent.isStopped = true;
         context.Animator.SetBool("IsWalking", false);
         context.Animator.SetBool("IsDancing", true);
-
         return NodeState.SUCCESS;
     }
 

@@ -14,9 +14,12 @@ public class NPSsManager : MonoBehaviour
 
     [Header("Optimitization param")]
     [SerializeField] private float maxNpcDistance = 70f;
-    [SerializeField] private bool deleteNonVisibleNpc = true;
     [SerializeField] private bool allowObjectPolling = true;
     [SerializeField] private float poolSize = 30f;
+
+    [SerializeField] private bool allowObjectVisibilityController;
+    [SerializeField] public float maxViewAngle = 60f;
+    [SerializeField] private Camera playerCamera;
     
     
     [Header("NPC param")] 
@@ -26,6 +29,7 @@ public class NPSsManager : MonoBehaviour
     
     [Header("InteractionPlaces")] 
     [SerializeField] private bool allowInteraction;
+    [SerializeField] private Transform[] interactionPlaces;
 
     private void Start()
     {
@@ -34,6 +38,8 @@ public class NPSsManager : MonoBehaviour
         {
             SpawnRandomNPC();
         }
+
+        
     }
 
     private void Update()
@@ -45,17 +51,12 @@ public class NPSsManager : MonoBehaviour
         }
         ObjectPolling();
     }
-
-    void SpawnRandomNPC(Transform tr)
-    {
-        npcList.Add(Instantiate(npcPrefabs[Random.Range(0, npcPrefabs.Count)], tr.position, Quaternion.identity));
-    }
     void SpawnRandomNPC()
     {
         // Получаем случайную позицию вокруг игрока в пределах радиуса
         Vector3 randomDirection = Random.insideUnitSphere * spawnRadius;
         randomDirection += player.transform.position;
-        randomDirection.y = player.transform.position.y; // Убедись, что высота остается одинаковой
+        randomDirection.y = player.transform.position.y; 
 
         NavMeshHit hit;
 
@@ -66,6 +67,18 @@ public class NPSsManager : MonoBehaviour
             GameObject newNPC = Instantiate(npcPrefabs[Random.Range(0, npcPrefabs.Count)], hit.position, Quaternion.identity);
 
             if (allowObjectPolling) newNPC.SetActive(false);
+            if (allowInteraction)
+            {
+                BehaviorTreeController behaviorTreeController = newNPC.GetComponent<BehaviorTreeController>();
+                Transform[] objects =  new Transform[]
+                {
+                    interactionPlaces[Random.Range(0, interactionPlaces.Length)],
+                    interactionPlaces[Random.Range(0, interactionPlaces.Length)],
+                    interactionPlaces[Random.Range(0, interactionPlaces.Length)]
+                };
+                behaviorTreeController.destinations = objects;
+            }
+            
             npcList.Add(newNPC);
         }
     }
