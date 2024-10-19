@@ -1,8 +1,10 @@
-# **README: Проект NPC на Unity с Поведенческим Деревом и Циклом Дня**  
+# **README: Проект NPC на Unity с Поведенческим Деревом**  
+# **Команда Radiation**  
+
 
 ## **Описание проекта**  
 Данный проект реализует систему NPC (неигровых персонажей) с использованием **Behavior Tree** (дерева поведения). NPC реагируют на окружающую среду, такие как присутствие игрока или машины, перемещаются между точками, и адаптируются к изменениям погоды и времени суток.
-
+ й
 ---
 
 ## **Функциональные возможности**  
@@ -18,8 +20,7 @@
 1. **Установите Unity** (рекомендуемая версия 2021.3+).  
 2. **Клонируйте проект:**  
    ```bash
-   git clone <ссылка на репозиторий>
-   cd <папка проекта>
+   git clone <https://github.com/nek07/NPC-controllers.git>
    ```
 3. Откройте проект в Unity.  
 4. Настройте сцену:
@@ -29,8 +30,153 @@
 5. Запустите проект, нажав **Play** в Unity.
 
 ---
-
 ## **Исходный код**  
+
+### **1. Контроллер дерева поведения: `BehaviorTreeController.cs`**  
+```csharp
+using UnityEngine;
+using UnityEngine.AI;
+using System.Collections.Generic;
+
+public class BehaviorTreeController : MonoBehaviour
+{
+    private Node root;
+    private NavMeshAgent agent;
+    private Animator animator;
+    private Renderer npcRenderer;
+    public Transform[] destinations;
+
+    private void Start()
+    {
+        agent = GetComponent<NavMeshAgent>();
+        animator = GetComponent<Animator>();
+        npcRenderer = GetComponentInChildren<Renderer>();
+
+        // Определение узлов и дерева
+        ActionNode moveToDestination = new ActionNode(ctx => MoveToDestination(ctx));
+        ConditionNode isPlayerNearby = new ConditionNode(ctx => CheckProximity("Player"));
+
+        SequenceNode greetSequence = new SequenceNode(new List<Node> { isPlayerNearby, moveToDestination });
+        root = new SelectorNode(new List<Node> { greetSequence });
+    }
+
+    private void Update()
+    {
+        var context = new ActionContext(agent, animator);
+        root.Evaluate(context);
+    }
+
+    private NodeState MoveToDestination(ActionContext context)
+    {
+        if (agent.remainingDistance > agent.stoppingDistance)
+        {
+            agent.SetDestination(destinations[0].position);
+            context.Animator.SetBool("IsWalking", true);
+            return NodeState.RUNNING;
+        }
+        context.Animator.SetBool("IsWalking", false);
+        return NodeState.SUCCESS;
+    }
+
+    private bool CheckProximity(string tag) => Vector3.Distance(transform.position, GameObject.FindWithTag(tag).transform.position) < 5f;
+}
+```
+
+### **2. Менеджер NPC: `NPSsManager.cs`**  
+Вот документация для класса `NPSsManager`, который управляет созданием и удалением NPC в игровом мире. 
+
+---
+
+# Менеджер NPC: `NPSsManager.cs`
+
+## Описание
+Класс `NPSsManager` отвечает за управление NPC (неигровыми персонажами) в игре. Он создает NPC в заданном радиусе от игрока и удаляет NPC, которые находятся на большом расстоянии от игрока, чтобы оптимизировать производительность.
+
+## Поля класса
+
+### Параметры игрока
+- **GameObject player**: Ссылка на объект игрока в сцене.
+- **float spawnRadius**: Радиус, в пределах которого NPC могут появляться вокруг игрока.
+
+### Параметры NPC
+- **int maxNPC**: Максимальное количество NPC, которые могут быть активны одновременно.
+- **List<GameObject> npcPrefabs**: Список префабов NPC, из которых можно создавать новых NPC.
+- **List<GameObject> npcList**: Список текущих NPC в сцене.
+
+## Метод `Start()`
+- Вызывается при запуске игры. Инициализирует создание NPC, создавая максимальное количество NPC, указанных в `maxNPC`.
+
+## Метод `Update()`
+- Вызывается каждый кадр. Обрабатывает удаление удаленных NPC и создает новых NPC, если текущее количество NPC меньше максимального.
+
+## Метод `SpawnRandomNPC()`
+- Генерирует случайную позицию в пределах заданного радиуса от игрока.
+- Проверяет, есть ли точка на NavMesh для спавна NPC с использованием метода `NavMesh.SamplePosition`.
+- Создает нового NPC, используя случайный префаб из списка `npcPrefabs`, и добавляет его в `npcList`.
+
+## Метод `RemoveFarNPCs()`
+- Проходит по списку текущих NPC в обратном порядке и удаляет тех NPC, которые находятся на расстоянии более 70 единиц от игрока.
+- Удаляет NPC как из игрового мира, так и из списка `npcList`.
+
+## Используемые принципы ООП
+- **Инкапсуляция**: Все данные и методы, связанные с управлением NPC, находятся в одном классе.
+- **Абстракция**: Скрывает детали реализации спавна NPC и управления их количеством.
+- **Наследование и полиморфизм**: Возможно расширение этого класса для создания специализированных менеджеров NPC с уникальным поведением.
+
+
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.AI;
+
+public class NPSsManager : MonoBehaviour
+{
+    [Header("Player param")] 
+    [SerializeField] private GameObject player;
+    [SerializeField] private float spawnRadius = 10f;
+    
+    [Header("NPC param")] 
+    [SerializeField] private int maxNPC = 10;
+    [SerializeField] private List<GameObject> npcPrefabs;
+    private List<GameObject> npcList = new List<GameObject>();
+
+    private void Start()
+    {
+        for (int i = 0; i < maxNPC; i++) { SpawnRandomNPC(); }
+    }
+
+    private void Update()
+    {
+        RemoveFarNPCs();
+        if (npcList.Count < maxNPC) { SpawnRandomNPC(); }
+    }
+
+    private void SpawnRandomNPC()
+    {
+        Vector3 spawnPos = player.transform.position + Random.insideUnitSphere * spawnRadius;
+        if (NavMesh.SamplePosition(spawnPos, out NavMeshHit hit, spawnRadius, NavMesh.AllAreas))
+        {
+            GameObject npc = Instantiate(npcPrefabs[Random.Range(0, npcPrefabs.Count)], hit.position, Quaternion.identity);
+            npcList.Add(npc);
+        }
+    }
+
+    private void RemoveFarNPCs()
+    {
+        for (int i = npcList.Count - 1; i >= 0; i--)
+        {
+            if (Vector3.Distance(player.transform.position, npcList[i].transform.position) > 70f)
+            {
+                Destroy(npcList[i]);
+                npcList.RemoveAt(i);
+            }
+        }
+    }
+}
+```
+
+
+
 ### **1. Интерфейсы: `IAction`, `ICondition`, `INearby`**  
 ```csharp
 public interface IAction
@@ -103,109 +249,10 @@ public class DayCycleManager : MonoBehaviour
 
 ---
 
-### **3. Менеджер NPC: `NPSsManager.cs`**  
-```csharp
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.AI;
-
-public class NPSsManager : MonoBehaviour
-{
-    [Header("Player param")] 
-    [SerializeField] private GameObject player;
-    [SerializeField] private float spawnRadius = 10f;
-    
-    [Header("NPC param")] 
-    [SerializeField] private int maxNPC = 10;
-    [SerializeField] private List<GameObject> npcPrefabs;
-    private List<GameObject> npcList = new List<GameObject>();
-
-    private void Start()
-    {
-        for (int i = 0; i < maxNPC; i++) { SpawnRandomNPC(); }
-    }
-
-    private void Update()
-    {
-        RemoveFarNPCs();
-        if (npcList.Count < maxNPC) { SpawnRandomNPC(); }
-    }
-
-    private void SpawnRandomNPC()
-    {
-        Vector3 spawnPos = player.transform.position + Random.insideUnitSphere * spawnRadius;
-        if (NavMesh.SamplePosition(spawnPos, out NavMeshHit hit, spawnRadius, NavMesh.AllAreas))
-        {
-            GameObject npc = Instantiate(npcPrefabs[Random.Range(0, npcPrefabs.Count)], hit.position, Quaternion.identity);
-            npcList.Add(npc);
-        }
-    }
-
-    private void RemoveFarNPCs()
-    {
-        for (int i = npcList.Count - 1; i >= 0; i--)
-        {
-            if (Vector3.Distance(player.transform.position, npcList[i].transform.position) > 70f)
-            {
-                Destroy(npcList[i]);
-                npcList.RemoveAt(i);
-            }
-        }
-    }
-}
-```
 
 ---
 
-### **4. Контроллер дерева поведения: `BehaviorTreeController.cs`**  
-```csharp
-using UnityEngine;
-using UnityEngine.AI;
-using System.Collections.Generic;
 
-public class BehaviorTreeController : MonoBehaviour
-{
-    private Node root;
-    private NavMeshAgent agent;
-    private Animator animator;
-    private Renderer npcRenderer;
-    public Transform[] destinations;
-
-    private void Start()
-    {
-        agent = GetComponent<NavMeshAgent>();
-        animator = GetComponent<Animator>();
-        npcRenderer = GetComponentInChildren<Renderer>();
-
-        // Определение узлов и дерева
-        ActionNode moveToDestination = new ActionNode(ctx => MoveToDestination(ctx));
-        ConditionNode isPlayerNearby = new ConditionNode(ctx => CheckProximity("Player"));
-
-        SequenceNode greetSequence = new SequenceNode(new List<Node> { isPlayerNearby, moveToDestination });
-        root = new SelectorNode(new List<Node> { greetSequence });
-    }
-
-    private void Update()
-    {
-        var context = new ActionContext(agent, animator);
-        root.Evaluate(context);
-    }
-
-    private NodeState MoveToDestination(ActionContext context)
-    {
-        if (agent.remainingDistance > agent.stoppingDistance)
-        {
-            agent.SetDestination(destinations[0].position);
-            context.Animator.SetBool("IsWalking", true);
-            return NodeState.RUNNING;
-        }
-        context.Animator.SetBool("IsWalking", false);
-        return NodeState.SUCCESS;
-    }
-
-    private bool CheckProximity(string tag) => Vector3.Distance(transform.position, GameObject.FindWithTag(tag).transform.position) < 5f;
-}
-```
 
 ---
 
